@@ -1,0 +1,122 @@
+  IWorkbook workbook;
+
+            //string sWebRootFolder = Path.GetTempPath();
+            var xmlPath = Path.Combine(System.Web.HttpContext.Current.Server.MapPath("~/Admin/templates"), "Survey.xls");
+
+            string sFileName = "";
+
+            workbook = new XSSFWorkbook();
+
+            DataTable Dttypes = new DataTable();
+            Dttypes = Getsurveytypes(EventId);
+
+            for (int typeloop = 0; typeloop < Dttypes.Rows.Count; typeloop++)
+            {
+                ISheet sheet = workbook.CreateSheet(Dttypes.Rows[typeloop]["Type"].ToString());
+
+
+                DataTable dt = new DataTable();
+                dt = getsurveylistbytype(EventId.ToString().Trim(), Dttypes.Rows[typeloop]["Type"].ToString().Trim());
+
+                DataView dv = new DataView(dt);
+
+                DataTable distinctValues = dv.ToTable(true, "Question");
+
+                int rowstotal = -1;
+                for (int qtnloop = 0; qtnloop < distinctValues.Rows.Count; qtnloop++)
+                {
+                    dv.RowFilter = "Question='" + distinctValues.Rows[qtnloop]["Question"] + "'";
+
+                    DataTable Filteredtable = new DataTable();
+                    Filteredtable = dv.ToTable();
+
+                    var style = workbook.CreateCellStyle();
+                    var font = workbook.CreateFont();
+                    font.Boldweight = (short)FontBoldWeight.Bold;
+                    font.IsBold = true;
+
+                    var boldFont = workbook.CreateFont();
+
+                    boldFont.Boldweight = (short)FontBoldWeight.Bold;
+                    ICellStyle boldStyle = workbook.CreateCellStyle();
+                    boldStyle.FillForegroundColor = NPOI.HSSF.Util.HSSFColor.Grey50Percent.Index;
+                    boldStyle.FillPattern = FillPattern.SolidForeground;
+
+
+                    style.SetFont(font);
+
+                    rowstotal = rowstotal + 1;
+                    IRow qrow = sheet.CreateRow(rowstotal);
+                    ICell Qcell = qrow.CreateCell(0);
+                    Qcell.SetCellValue("Question:");
+                    Qcell.CellStyle = style;
+
+                    ICell Qcell2 = qrow.CreateCell(1);
+                    Qcell2.SetCellValue(distinctValues.Rows[qtnloop]["Question"].ToString());
+                    Qcell2.CellStyle = style;
+
+                    rowstotal = rowstotal + 1;
+                    sheet.CreateRow(rowstotal);
+                    rowstotal = rowstotal + 1;
+                    sheet.CreateRow(rowstotal);
+
+                    rowstotal = rowstotal + 1;
+                    IRow row = sheet.CreateRow(rowstotal);
+                    var s = workbook.CreateCellStyle();
+                    for (int j = 1; j < Filteredtable.Columns.Count; j++)
+                    {
+                        String columnName = Filteredtable.Columns[j].ToString();
+
+                        sheet.SetColumnWidth(j - 1, 20 * 2 * 256);
+                        ICell hcell = row.CreateCell(j - 1);
+
+                        hcell.SetCellValue(columnName);
+                        //hcell.CellStyle = style;
+                        hcell.CellStyle = boldStyle;
+
+                        hcell.CellStyle.BorderRight = NPOI.SS.UserModel.BorderStyle.Medium;
+                        hcell.CellStyle.BorderLeft = NPOI.SS.UserModel.BorderStyle.Medium;
+                        hcell.CellStyle.BorderTop = NPOI.SS.UserModel.BorderStyle.Medium;
+                        hcell.CellStyle.BorderBottom = NPOI.SS.UserModel.BorderStyle.Medium;
+
+                    }
+
+                    for (int i = 0; i < Filteredtable.Rows.Count; i++)
+                    {
+                        rowstotal = rowstotal + 1;
+                        IRow row1 = sheet.CreateRow(rowstotal);
+                        for (int j = 1; j < Filteredtable.Columns.Count; j++)
+                        {
+                            String columnName = Filteredtable.Columns[j].ToString();
+
+
+                            ICell rowcell = row1.CreateCell(j - 1);
+
+                            rowcell.SetCellValue(Filteredtable.Rows[i][columnName].ToString());
+                            rowcell.CellStyle.BorderRight = NPOI.SS.UserModel.BorderStyle.Medium;
+                            rowcell.CellStyle.BorderLeft = NPOI.SS.UserModel.BorderStyle.Medium;
+                            rowcell.CellStyle.BorderTop = NPOI.SS.UserModel.BorderStyle.Medium;
+                            rowcell.CellStyle.BorderBottom = NPOI.SS.UserModel.BorderStyle.Medium;
+
+
+                        }
+                    }
+                    rowstotal = rowstotal + 1;
+                    sheet.CreateRow(rowstotal);
+                    rowstotal = rowstotal + 1;
+                    sheet.CreateRow(rowstotal);
+
+                }
+
+            }
+
+            if (File.Exists(xmlPath))
+            {
+                File.Delete(xmlPath);
+            }
+            using (var fileStream = new FileStream(xmlPath, FileMode.OpenOrCreate, FileAccess.ReadWrite))
+            {
+                workbook.Write(fileStream);
+            }
+
+            return "../templates/Survey.xls";
